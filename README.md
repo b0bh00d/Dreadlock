@@ -58,4 +58,21 @@ In production builds, `DREADLOCK_DESTRUCT` is simply empty and has no replacemen
 
 Usually, `std::unique_lock` is allowed to automatically release the mutex ownership when it goes out of scope.  However, for Dreadlock, it is better practice to explicitly unlock the mutex before going out of scope (for tracking purposes).  In these cases, you can employ the `DREADLOCK_UNLOCK_AND_DESTRUCT` macro, which combines the actions of both, simplifying code.
 
-I hope you find this useful.  I know *I* will. ;)
+## Instrumenting C++ modules
+Manually retrofitting C++ modules in a large project to use Dreadlock is not exactly a fun activity.  Add to that the need to manually restore the previous code if you just want to use Dreadlock locally without committing it to source control, and you've got something of a tedious experience.  So, I did some initial exploration of trying to get clang to build a parse tree from C++ modules.  With this parse tree, I hoped to be able to accurately determine scope transitions and to read parsed `std::unique_lock` declarations so that I could automatically instrument C++ modules.  Well, that didn't turn out so well.  To my surprise, it ended up taking clang nearly 10 minutes (yes, *minutes*) to build the parse tree for just one C++ module in my project because of all the #include dependencies, and that parse tree ended up being tens of megabytes in size on disk.  Not at all practical, especially if you need to instrument many modules.  I put the task aside.
+
+However, a recent question posed about Dreadlock renewed my attention to the problem<sup>1</sup>.  Breaking it down, I really only needed to know scope transitions and to parse `std::unique_lock` declarations to successfully instrument a file.  This sounded like a perfect task for my old and trusted friend, **Python**.  Where clang would build a general-purpose parse of an *entire* C++ file, I could use Python to "micro-parse" the C++ module, building an accurate map of scope transitions, and using regular expressions to parse out the `std::unique_lock` declarations.  As an added bonus, it would be blazingly fast (well, by comparison to my experience with clang, at any rate).
+
+I have now included in the Dreadlock project the `dreadlock_instrument.py` Python file I wrote to inject Dreadlock's macros into one or more C++ modules that employ `std::unique_lock`.  Since it uses OptionParser, you can just run it with "--help" to get an idea of the options it supports.  However, here are some helpful notes:
+
+* **indent** is used when adding new entries (like DREADLOCK_DESTRUCT).  You can specify tabs using "\t" or "&lt;tab&gt;" and the script will correctly substitute.
+* if **overwrite** is not specified, then the instrumented code will be written to stdout.
+* **debug** prints the scope-transition mapping and exits.  Largely useful for troubleshooting situations within the code that the script isn't handling properly.
+* if you are instrumenting code that has questionable formatting hygiene, you can run it through `clang-format` first before letting the script instrument it.  This might solve some issues with instrumenting if you experience any.
+* if you are instrumenting code under version control, you can probably turn off the ability to revert the instrumentation by specifying **disable-revert**.  This will produce slightly cleaner code, although I tend to keep the revert markers just to double-check that the script is instrumenting correctly.
+* You can specify multiple excludes on the command line using multiple **exclude** options.  However, an **exclude** can instead specify a file that contains all the excludes to be processed, one per line.  Excludes reference a mutex variable name to be ignored when instrumenting (e.g., I don't want to instrument a mutex used just for a `std::condition_variable`), or they can reference a C++ module name to be ignored when a glob pattern is used to specify input files.
+
+<sup>1</sup> *(No difficulties writing this one either, Jeff.* :wink: *)*
+
+## Happy hunting
+I hope you find Dreadlock useful; I know *I* will.
