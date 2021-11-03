@@ -51,7 +51,7 @@ class LockInfo:
             self.excluded = source.excluded
 
     def _info(self):
-        return 'mutex: {}, id: {}, locked: {}, deferred: {}, outer_scope: {}, excluded: {}'.format(self.mutex_name, self.id_name, self.is_locked, self.is_deferred, self.outer_scope, self.excluded)
+        return f'mutex: {self.mutex_name}, id: {self.id_name}, locked: {self.is_locked}, deferred: {self.is_deferred}, outer_scope: {self.outer_scope}, excluded: {self.excluded}'
 
     def __str__(self):
         return self._info()
@@ -183,7 +183,7 @@ def map_scopes(filename, lines, options):
 
 def is_valid_variable_name(name):
     try:
-        parse('{} = None'.format(name))
+        parse(f'{name} = None')
     except:
         return False
 
@@ -250,29 +250,29 @@ def instrument(lines, scopes, options):
                     info = scope_stack[-1][key]
                     if not info.excluded:
                         if not info.outer_scope:
-                            comment_str = "  // aids Dreadlock's bookkeeping {}".format(scope_level)
+                            comment_str = "  // aids Dreadlock's bookkeeping"
                             if info.is_locked:
                                 unlock_str = ''
                                 if len(info.id_name):
-                                    unlock_str = "%sDREADLOCK_UNLOCK_ID(%s, %s);" % (indent, info.mutex_name, info.id_name)
+                                    unlock_str = f"{indent}DREADLOCK_UNLOCK_ID({info.mutex_name}, {info.id_name});"
                                 else:
-                                    unlock_str = "%sDREADLOCK_UNLOCK(%s);" % (indent, info.mutex_name)
+                                    unlock_str = f"{indent}DREADLOCK_UNLOCK({info.mutex_name});"
 
                                 if 'return' in new_lines[-1]:
-                                    new_lines.insert(-1, "{}{}".format(unlock_str, comment_str))
+                                    new_lines.insert(-1, f"{unlock_str}{comment_str}")
                                 else:
-                                    new_lines.append("{}{}".format(unlock_str, comment_str))
+                                    new_lines.append(f"{unlock_str}{comment_str}")
 
                             destr_str = ''
                             if len(info.id_name):
-                                destr_str = "%sDREADLOCK_DESTRUCT_ID(%s, %s);" % (indent, info.mutex_name, info.id_name)
+                                destr_str = f"{indent}DREADLOCK_DESTRUCT_ID({info.mutex_name}, {info.id_name});"
                             else:
-                                destr_str = "%sDREADLOCK_DESTRUCT(%s);" % (indent, info.mutex_name)
+                                destr_str = f"{indent}DREADLOCK_DESTRUCT({info.mutex_name});"
 
                             if 'return' in new_lines[-1]:
-                                new_lines.insert(-1, "{}{}".format(destr_str, comment_str))
+                                new_lines.insert(-1, f"{destr_str}{comment_str}")
                             else:
-                                new_lines.append("{}{}".format(destr_str, comment_str))
+                                new_lines.append(f"{destr_str}{comment_str}")
 
                             changed = True
 
@@ -333,18 +333,18 @@ def instrument(lines, scopes, options):
 
                     revert_str = ''
                     if not options.disable_revert:
-                        revert_str = " // {{%s%s}}" % (line[:ndx], original)
+                        revert_str = f" // {{{{{line[:ndx]}{original}}}}}"
 
                     if len(id_name):
                         if is_deferred:
-                            line = line[:ndx] + ("DREADLOCK_DEFER_ID(%s, %s);%s" % (mutex_name, id_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_DEFER_ID({mutex_name}, {id_name});{revert_str}"
                         else:
-                            line = line[:ndx] + ("DREADLOCK_ID(%s, %s);%s" % (mutex_name, id_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_ID({mutex_name}, {id_name});{revert_str}"
                     else:
                         if is_deferred:
-                            line = line[:ndx] + ("DREADLOCK_DEFER(%s);%s" % (mutex_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_DEFER({mutex_name});{revert_str}"
                         else:
-                            line = line[:ndx] + ("DREADLOCK(%s);%s" % (mutex_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK({mutex_name});{revert_str}"
 
                     changed = True
 
@@ -372,12 +372,12 @@ def instrument(lines, scopes, options):
 
                         revert_str = ''
                         if not options.disable_revert:
-                            revert_str = " // {{%s%s}}" % (line[:ndx], original)
+                            revert_str = f" // {{{{{line[:ndx]}{original}}}}}"
 
                         if len(info.id_name):
-                            line = line[:ndx] + ("DREADLOCK_LOCK_ID(%s, %s);%s" % (info.mutex_name, info.id_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_LOCK_ID({info.mutex_name}, {info.id_name});{revert_str}"
                         else:
-                            line = line[:ndx] + ("DREADLOCK_LOCK(%s);%s" % (info.mutex_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_LOCK({info.mutex_name});{revert_str}"
 
                         changed = True
 
@@ -401,12 +401,12 @@ def instrument(lines, scopes, options):
 
                         revert_str = ''
                         if not options.disable_revert:
-                            revert_str = " // {{%s%s}}" % (line[:ndx], original)
+                            revert_str = f" // {{{{{line[:ndx]}{original}}}}}"
 
                         if len(info.id_name):
-                            line = line[:ndx] + ("DREADLOCK_UNLOCK_ID(%s, %s);%s" % (info.mutex_name, info.id_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_UNLOCK_ID({info.mutex_name}, {info.id_name});{revert_str}"
                         else:
-                            line = line[:ndx] + ("DREADLOCK_UNLOCK(%s);%s" % (info.mutex_name, revert_str))
+                            line = line[:ndx] + f"DREADLOCK_UNLOCK({info.mutex_name});{revert_str}"
 
                         changed = True
 
@@ -483,7 +483,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     for module in modules:
-        assert os.path.exists(module), "File '%s' does not exist!" % module
+        assert os.path.exists(module), f"File '{module}' does not exist!"
 
         bypass_module = False
 
@@ -495,7 +495,7 @@ if __name__ == "__main__":
                 break
 
         if bypass_module:
-            print("Excluding file '%s'." % module)
+            print(f"Excluding file '{module}'.")
             continue
 
         if options.apply:
@@ -513,7 +513,7 @@ if __name__ == "__main__":
                 sys.exit(0)
 
             if options.overwrite:
-                print("Instrumenting '%s' ..." % module, end='')
+                print(f"Instrumenting '{module}' ...", end='')
                 sys.stdout.flush()
 
             new_lines, changed = instrument(file_lines, scopes, options)
@@ -570,4 +570,4 @@ if __name__ == "__main__":
                         with open(module, 'w') as f:
                             f.write('\n'.join(new_lines))
             else:
-                print("No revert markers were found in '%s'! (Did you explicitly disable revert for this file?)" % module)
+                print(f"No revert markers were found in '{module}'! (Did you explicitly disable revert for this file?)")
